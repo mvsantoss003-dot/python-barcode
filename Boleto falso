@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+import barcode
+from barcode.writer import ImageWriter
+from PIL import Image, ImageDraw, ImageFont
+import argparse, os
+
+def itf25_from_linha(linha_digitavel: str):
+    """
+    Remove pontos/ espaços e pega apenas os 44 dígitos.
+    Gera PNG ITF-25 300 dpi, 165 × 33 mm (padrão boleto).
+    """
+    limpa = ''.join(filter(str.isdigit, linha_digitavel))
+    if len(limpa) != 44:
+        raise ValueError("Linha deve ter 44 dígitos puros.")
+    code128 = barcode.get_barcode_class('itf')
+    options = {
+        'module_width': 0.40,  # mm (fino)
+        'module_height': 15.0, # mm
+        'font_size': 9,
+        'text_distance': 5,
+        'quiet_zone': 6.5,
+        'dpi': 300,
+    }
+    bc = code128(limpa, writer=ImageWriter())
+    fname = "codigo_barras_fake"
+    bc.save(fname, options)
+    # ajusta para 165 mm (padrão boleto)
+    img = Image.open(fname + ".png").convert("RGB")
+    w_mm, h_mm = 165, 33
+    w_px = int(w_mm * 11.811)  # 300 dpi
+    h_px = int(h_mm * 11.811)
+    img = img.resize((w_px, h_px), Image.LANCZOS)
+    # adiciona linha digitável legível por baixo
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.truetype("DejaVuSansMono.ttf", 34)
+    texto = f"{linha_digitavel[:11]} {linha_digitavel[11:22]} {linha_digitavel[22:33]} {linha_digitavel[33:]}"
+    draw.text((20, h_px - 50), texto, fill="black", font=font)
+    img.save("codigo_boleto_fake.png")
+    print("PNG salvo -> codigo_boleto_fake.png")
+    os.remove(fname + ".png")  # remove temp
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("linha")
+    args = parser.parse_args()
+    itf25_from_linha(args.linha)
+
+
+INSTALAÇÃO (uma linha)  
+
+pip install python-barcode pillow --break-system-packages
